@@ -19,10 +19,6 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
-
-
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -47,8 +43,12 @@ public class MainActivity extends AppCompatActivity {
 
     BluetoothGatt fittoServer;
     List<BluetoothGattService> fittoServices;
+    List<BluetoothGattCharacteristic> fittoCharacterics;
 
     private static final String FITTO_MAC_ADDRESS = "EE:F0:EA:17:69:B4";
+
+    private String deviceManufacturer;
+    private String deviceModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,19 +146,46 @@ public class MainActivity extends AppCompatActivity {
                                 // Connect to the Fitto server
                                 fittoServer = device.connectGatt(mContext, false, serverCallback);
 
+                                try {
+                                    Thread.sleep(5000);
+                                } catch (InterruptedException e) {
+                                    Log.w(TAG, e);
+                                }
+
+                                // After the server is connected,
+                                Log.w(TAG, "Discovering services...");
+                                fittoServer.discoverServices(); //TODO: DONT DELETE THIS!!!!
 
                                 try {
                                     Thread.sleep(5000);
                                 } catch (InterruptedException e) {
-                                    e.printStackTrace();
+                                    Log.w(TAG, e);
                                 }
 
-                                if(fittoServer.discoverServices()){
-                                    Log.w(TAG, "Discovering...");
-                                }else {
-                                    Log.w(TAG, "Can't discover for some reason.. ");
-                                }
+                                fittoServices = fittoServer.getServices();
 
+                                for(BluetoothGattService service : fittoServices){
+                                    Log.w(TAG, service.getUuid().toString());
+                                    if (service.getUuid().toString().equals("0000180a-0000-1000-8000-00805f9b34fb")){
+                                        Log.w(TAG, "UUID 180a Found, getting characteristics.. ");
+                                        fittoCharacterics = service.getCharacteristics();
+                                        try {
+                                            Thread.sleep(10000);
+                                        } catch (InterruptedException e) {
+                                            Log.w(TAG, e);
+                                        } // Wait 5 sec
+
+                                        for (BluetoothGattCharacteristic characteristic : fittoCharacterics){
+                                        fittoServer.readCharacteristic(characteristic);
+                                            try {
+                                                Thread.sleep(3000);
+                                            } catch (InterruptedException e) {
+                                                Log.w(TAG, e);
+                                            } // Wait 3 sec
+                                        }
+
+                                    }
+                                }
                             }
                         }
                     });
@@ -210,13 +237,27 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
-            Log.w(TAG, "FOUND SOME SERVICE");
-
+            Log.w(TAG,"Found device: " + gatt.getDevice().getName());
+            Log.w(TAG, "Extracting services from the device");
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
+
+            deviceManufacturer = new String(characteristic.getValue());
+            Log.w(TAG,deviceManufacturer);
+
+            if (characteristic.getUuid().toString().equals("")){
+                deviceManufacturer = new String(characteristic.getValue());
+                Log.w(TAG,deviceManufacturer);
+            }
+
+            if (characteristic.getUuid().toString().equals("")){
+                deviceModel = new String(characteristic.getValue());
+            }
+
+
         }
 
         @Override
@@ -343,6 +384,4 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
-
-
 }
