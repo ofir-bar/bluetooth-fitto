@@ -3,6 +3,11 @@ package tools.ofirbar.bluetoothscan;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -33,6 +38,8 @@ public class MainActivity extends AppCompatActivity {
     // Stops scanning after 5 seconds.
     private static final long SCAN_PERIOD = 5000;
     private Context mContext;
+
+    BluetoothGatt fittoServer;
 
     private static final String FITTO_MAC_ADDRESS = "EE:F0:EA:17:69:B4";
 
@@ -97,7 +104,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
     // Device scan callback.
-
     private BluetoothAdapter.LeScanCallback leScanCallback = new BluetoothAdapter.LeScanCallback() {
 
                 @Override
@@ -110,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
                             // Check to see if FITTO is found
                             if (device.getAddress().equals(FITTO_MAC_ADDRESS) && device.getAddress() != null ){
 
-                                Log.w(TAG, "Found: " + device.getName());
+                                fittoServer = device.connectGatt(mContext, false, serverCallback);
 
                                 // Stop scanning once the FITTO is found
                                 mScanning = false;
@@ -122,6 +128,70 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             };
+
+
+    // Fitto Server callback
+    BluetoothGattCallback serverCallback = new BluetoothGattCallback() {
+        @Override
+        public void onPhyUpdate(BluetoothGatt gatt, int txPhy, int rxPhy, int status) {
+            super.onPhyUpdate(gatt, txPhy, rxPhy, status);
+        }
+
+        @Override
+        public void onPhyRead(BluetoothGatt gatt, int txPhy, int rxPhy, int status) {
+            super.onPhyRead(gatt, txPhy, rxPhy, status);
+        }
+
+        @Override
+        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            super.onConnectionStateChange(gatt, status, newState);
+        }
+
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            super.onServicesDiscovered(gatt, status);
+        }
+
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            super.onCharacteristicRead(gatt, characteristic, status);
+        }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            super.onCharacteristicWrite(gatt, characteristic, status);
+        }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            super.onCharacteristicChanged(gatt, characteristic);
+        }
+
+        @Override
+        public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            super.onDescriptorRead(gatt, descriptor, status);
+        }
+
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            super.onDescriptorWrite(gatt, descriptor, status);
+        }
+
+        @Override
+        public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
+            super.onReliableWriteCompleted(gatt, status);
+        }
+
+        @Override
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            super.onReadRemoteRssi(gatt, rssi, status);
+        }
+
+        @Override
+        public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+            super.onMtuChanged(gatt, mtu, status);
+        }
+    };
 
 
     @Override
@@ -137,6 +207,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
 
     private void isBluetoothSupportAndAvailable() {
         // Ensures Bluetooth is available on the device and it is enabled. If not,
