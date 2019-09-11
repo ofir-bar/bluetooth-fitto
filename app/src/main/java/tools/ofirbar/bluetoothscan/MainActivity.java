@@ -7,8 +7,9 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
-import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -18,11 +19,16 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -35,11 +41,12 @@ public class MainActivity extends AppCompatActivity {
     private Handler mHandler;
     private BluetoothDevice mDeviceToConnect = null;
 
-    // Stops scanning after 5 seconds.
-    private static final long SCAN_PERIOD = 5000;
+    // Stops scanning after 15 seconds.
+    private static final long SCAN_PERIOD = 15000;
     private Context mContext;
 
     BluetoothGatt fittoServer;
+    List<BluetoothGattService> fittoServices;
 
     private static final String FITTO_MAC_ADDRESS = "EE:F0:EA:17:69:B4";
 
@@ -63,7 +70,24 @@ public class MainActivity extends AppCompatActivity {
         connectToFitto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Log.w(TAG, "Sending connection request");
                 scanLeDevice(true);
+            }
+        });
+
+        Button disconnectFromFitto = findViewById(R.id.btn_disconnect);
+        disconnectFromFitto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (fittoServer != null){
+                    fittoServer.disconnect();
+                    fittoServer.close();
+
+                    Log.w(TAG,"Disconnected from Fitto");
+                }
+                else {
+                    Log.w(TAG,"Device is not connected to the Fitto");
+                }
             }
         });
 
@@ -85,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (enable) {
 
-            // Stops scanning after a SCAN_PERIOD seconds.
+             // Stops scanning after a SCAN_PERIOD seconds.
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -116,11 +140,25 @@ public class MainActivity extends AppCompatActivity {
                             // Check to see if FITTO is found
                             if (device.getAddress().equals(FITTO_MAC_ADDRESS) && device.getAddress() != null ){
 
+                                // Stop scanning once the FITTO is found
+                                scanLeDevice(false);
+
+                                // Connect to the Fitto server
                                 fittoServer = device.connectGatt(mContext, false, serverCallback);
 
-                                // Stop scanning once the FITTO is found
-                                mScanning = false;
-                                bluetoothAdapter.stopLeScan(leScanCallback);
+
+                                try {
+                                    Thread.sleep(5000);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+
+                                if(fittoServer.discoverServices()){
+                                    Log.w(TAG, "Discovering...");
+                                }else {
+                                    Log.w(TAG, "Can't discover for some reason.. ");
+                                }
+
                             }
                         }
                     });
@@ -128,6 +166,8 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             };
+
+
 
 
     // Fitto Server callback
@@ -145,11 +185,33 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
+
+            switch (newState){
+                case BluetoothProfile.STATE_CONNECTING: {
+                    Log.w(TAG, "Connecting...");
+                    break;
+                }
+                case BluetoothProfile.STATE_CONNECTED:{
+                    Log.w(TAG, "Connected to Fitto bottle");
+                    break;
+                }
+                case BluetoothProfile.STATE_DISCONNECTING: {
+                    Log.w(TAG, "Disconnecting from Fitto bottle...");
+                    break;
+                }
+                case BluetoothProfile.STATE_DISCONNECTED: {
+                    Log.w(TAG, "Disconnected from Fitto bottle");
+                    break;
+                }
+            }
+
         }
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
+            Log.w(TAG, "FOUND SOME SERVICE");
+
         }
 
         @Override
