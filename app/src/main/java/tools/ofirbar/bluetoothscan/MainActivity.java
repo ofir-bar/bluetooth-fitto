@@ -13,7 +13,6 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,36 +30,30 @@ public class MainActivity extends AppCompatActivity {
     private Handler mHandler;
     private BluetoothDevice mDeviceToConnect = null;
 
-    // Stops scanning after 10 seconds.
-    private static final long SCAN_PERIOD = 10000;
+    // Stops scanning after 5 seconds.
+    private static final long SCAN_PERIOD = 5000;
     private Context mContext;
+
+    private static final String FITTO_MAC_ADDRESS = "EE:F0:EA:17:69:B4";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mContext = this;
 
+        mContext = this;
         mHandler = new Handler();
 
-        // Initializes Bluetooth adapter.
         final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        // Initializes Bluetooth adapter.
         bluetoothAdapter = bluetoothManager.getAdapter();
 
-        // Ensures Bluetooth is available on the device and it is enabled. If not,
-        // displays a dialog requesting user permission to enable Bluetooth.
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-        }
+        isBluetoothSupportAndAvailable();
+        isLocationPermitted();
 
-        // Check for location permissions. Location permissions are mandatory for Bluetooth to work.
-        checkLocationPermission();
-
-
-        Button scanBLE = findViewById(R.id.btn_scan);
-        scanBLE.setOnClickListener(new View.OnClickListener() {
+        Button connectToFitto = findViewById(R.id.btn_connect);
+        connectToFitto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 scanLeDevice(true);
@@ -68,26 +61,24 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        Button connectBLE = findViewById(R.id.btn_connect);
-        connectBLE.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(mDeviceToConnect != null){
-                    //mDeviceToConnect.connectGatt(this,false,gattCallback);
-                }else
-                    Toast.makeText(mContext, "NO DEVICE FOUND, PRESS SCAN TO FIND THE BOTTLE", Toast.LENGTH_SHORT).show();
-
-
-            }
-        });
-
-
 
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Stop scanning if the Activity is paused
+        mScanning = false;
+        scanLeDevice(false);
+    }
+
+    // Scan LE Bluetooth device
     private void scanLeDevice(final boolean enable) {
+
         if (enable) {
-            // Stops scanning after a pre-defined scan period.
+
+            // Stops scanning after a SCAN_PERIOD seconds.
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -98,16 +89,17 @@ public class MainActivity extends AppCompatActivity {
 
             mScanning = true;
             bluetoothAdapter.startLeScan(leScanCallback);
+
         } else {
             mScanning = false;
             bluetoothAdapter.stopLeScan(leScanCallback);
         }
 
     }
-
     // Device scan callback.
-    private BluetoothAdapter.LeScanCallback leScanCallback =
-            new BluetoothAdapter.LeScanCallback() {
+
+    private BluetoothAdapter.LeScanCallback leScanCallback = new BluetoothAdapter.LeScanCallback() {
+
                 @Override
                 public void onLeScan(final BluetoothDevice device, int rssi,
                                      byte[] scanRecord) {
@@ -115,16 +107,21 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run() {
 
-                            if (device.getName() != null && device.getName().equals("FITTO")){
-                                Toast.makeText(mContext, "DEVICE FOUND, MAC ADDRESS: ", Toast.LENGTH_SHORT).show();
-                                if(mDeviceToConnect == null) mDeviceToConnect = device;
-                            }
+                            // Check to see if FITTO is found
+                            if (device.getAddress().equals(FITTO_MAC_ADDRESS) && device.getAddress() != null ){
 
+                                Log.w(TAG, "Found: " + device.getName());
+
+                                // Stop scanning once the FITTO is found
+                                mScanning = false;
+                                bluetoothAdapter.stopLeScan(leScanCallback);
+                            }
                         }
                     });
+
+
                 }
             };
-
 
 
     @Override
@@ -141,8 +138,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void isBluetoothSupportAndAvailable() {
+        // Ensures Bluetooth is available on the device and it is enabled. If not,
+        // displays a dialog requesting user permission to enable Bluetooth.
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+        }
+    }
 
-    public boolean checkLocationPermission() {
+    private boolean isLocationPermitted() {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -179,7 +184,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
     }
-
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
