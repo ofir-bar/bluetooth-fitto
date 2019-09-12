@@ -25,6 +25,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import java.util.UUID;
 
+import static tools.ofirbar.bluetoothscan.Constants.FITTO_MAC_ADDRESS;
 import static tools.ofirbar.bluetoothscan.Constants.Nordic_UART_Service;
 import static tools.ofirbar.bluetoothscan.Constants.RX_Characteristic;
 import static tools.ofirbar.bluetoothscan.Constants.TX_Characteristic;
@@ -38,17 +39,12 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothAdapter bluetoothAdapter;
     private boolean mScanning;
     private Handler mHandler;
-    private BluetoothDevice mDeviceToConnect = null;
-
-
 
     // Stops scanning after 15 seconds.
-    private static final long SCAN_PERIOD = 15000;
+    private static final long SCAN_PERIOD = 5000;
     private Context mContext;
 
     BluetoothGatt fittoServer;
-
-    private static final String FITTO_MAC_ADDRESS = "EE:F0:EA:17:69:B4";
 
 
     @Override
@@ -72,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Log.w(TAG, "Sending connection request");
-                scanLeDevice(true);
+                scanForBluetoothDevices(true);
             }
         });
 
@@ -102,11 +98,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Stop scanning if the Activity is paused
         mScanning = false;
-        scanLeDevice(false);
+        scanForBluetoothDevices(false);
     }
 
-    // Scan LE Bluetooth device
-    private void scanLeDevice(final boolean enable) {
+    // Scan for LE Bluetooth devices
+    private void scanForBluetoothDevices(final boolean enable) {
 
         if (enable) {
 
@@ -128,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
     // Device scan callback.
     private BluetoothAdapter.LeScanCallback leScanCallback = new BluetoothAdapter.LeScanCallback() {
 
@@ -142,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
                             if (device.getAddress().equals(FITTO_MAC_ADDRESS) && device.getAddress() != null ){
 
                                 // Stop scanning once the FITTO is found
-                                scanLeDevice(false);
+                                scanForBluetoothDevices(false);
 
                                 // Connect to the Fitto server
                                 fittoServer = device.connectGatt(mContext, false, serverCallback);
@@ -155,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 // After the server is connected,
                                 Log.w(TAG, "Discovering services...");
-                                fittoServer.discoverServices();//TODO: DONT DELETE THIS!!!!
+                                fittoServer.discoverServices();
                                 try {
                                     Thread.sleep(5000);
                                 } catch (InterruptedException e) {
@@ -210,15 +207,6 @@ public class MainActivity extends AppCompatActivity {
 
     // Fitto Server callback
     BluetoothGattCallback serverCallback = new BluetoothGattCallback() {
-        @Override
-        public void onPhyUpdate(BluetoothGatt gatt, int txPhy, int rxPhy, int status) {
-            super.onPhyUpdate(gatt, txPhy, rxPhy, status);
-        }
-
-        @Override
-        public void onPhyRead(BluetoothGatt gatt, int txPhy, int rxPhy, int status) {
-            super.onPhyRead(gatt, txPhy, rxPhy, status);
-        }
 
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
@@ -267,7 +255,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
-            Log.w("onCharacteristicChanged", "onCharacteristicChanged");
+
+            String data = bytesToHex(characteristic.getValue());
+            Log.w("onCharacteristicChanged", data);
+
         }
 
         @Override
@@ -281,21 +272,18 @@ public class MainActivity extends AppCompatActivity {
             Log.w("onDescriptorWrite", "onDescriptorWrite");
         }
 
-        @Override
-        public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
-            super.onReliableWriteCompleted(gatt, status);
-        }
-
-        @Override
-        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
-            super.onReadRemoteRssi(gatt, rssi, status);
-        }
-
-        @Override
-        public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
-            super.onMtuChanged(gatt, mtu, status);
-        }
     };
+
+    private static String bytesToHex(byte[] hashInBytes) {
+
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hashInBytes) {
+            sb.append(String.format("%02x", b));
+            sb.append("-");
+        }
+        sb.deleteCharAt(sb.length()-1);
+        return sb.toString();
+    }
 
 
     @Override

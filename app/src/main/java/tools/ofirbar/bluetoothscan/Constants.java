@@ -2,6 +2,7 @@ package tools.ofirbar.bluetoothscan;
 
 public class Constants {
 
+    public static final String FITTO_MAC_ADDRESS = "EE:F0:EA:17:69:B4";
     public static final String Nordic_UART_Service = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     public static final String RX_Characteristic = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
     public static final String TX_Characteristic = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
