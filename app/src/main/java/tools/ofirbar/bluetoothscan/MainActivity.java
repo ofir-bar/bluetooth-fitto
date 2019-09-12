@@ -16,9 +16,13 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -45,7 +49,8 @@ public class MainActivity extends AppCompatActivity {
     private Context mContext;
 
     BluetoothGatt fittoServer;
-
+    DeviceStatusModel deviceStatusModel;
+    TextView deviceFirmwareVersion;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +67,9 @@ public class MainActivity extends AppCompatActivity {
 
         isBluetoothSupportAndAvailable();
         isLocationPermitted();
+
+        deviceFirmwareVersion = findViewById(R.id.device_firmware_version);
+
 
         Button connectToFitto = findViewById(R.id.btn_connect);
         connectToFitto.setOnClickListener(new View.OnClickListener() {
@@ -256,8 +264,23 @@ public class MainActivity extends AppCompatActivity {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
 
-            String data = bytesToHex(characteristic.getValue());
-            Log.w("onCharacteristicChanged", data);
+            Log.w("onCharacteristicChanged", " onCharacteristicChanged");
+
+            byte[] result = characteristic.getValue();
+            String resultAsHex = bytesToHex(result);
+            String resultCode = resultAsHex.substring(0, resultAsHex.indexOf("-"));
+
+            // Makes sure we get the data for our request
+            if (resultCode.equals("10")){
+                deviceStatusModel = new DeviceStatusModel(characteristic.getValue());
+
+                String firmwareVersionValue = deviceStatusModel.getVersionStr();
+                Log.w("Found firmware version:", firmwareVersionValue);
+            }
+            else {
+                Log.w("Result code value:", resultCode);
+            }
+
 
         }
 
@@ -283,6 +306,16 @@ public class MainActivity extends AppCompatActivity {
         }
         sb.deleteCharAt(sb.length()-1);
         return sb.toString();
+    }
+
+    public static byte[] hexStringToByteArray(String hex) {
+        int l = hex.length();
+        byte[] data = new byte[l/2];
+        for (int i = 0; i < l; i += 2) {
+            data[i/2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                    + Character.digit(hex.charAt(i+1), 16));
+        }
+        return data;
     }
 
 
