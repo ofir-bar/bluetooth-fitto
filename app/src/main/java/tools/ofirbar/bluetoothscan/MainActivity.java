@@ -23,32 +23,33 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import java.util.UUID;
 
-import java.util.List;
+import static tools.ofirbar.bluetoothscan.Constants.Nordic_UART_Service;
+import static tools.ofirbar.bluetoothscan.Constants.RX_Characteristic;
+import static tools.ofirbar.bluetoothscan.Constants.TX_Characteristic;
+import static tools.ofirbar.bluetoothscan.Constants.TX_Descriptor;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_ENABLE_BT = 1;
     public static final int LOCATION_PERMISSION = 99;
-
     private final String TAG = "MainActivity";
     private BluetoothAdapter bluetoothAdapter;
     private boolean mScanning;
     private Handler mHandler;
     private BluetoothDevice mDeviceToConnect = null;
 
+
+
     // Stops scanning after 15 seconds.
     private static final long SCAN_PERIOD = 15000;
     private Context mContext;
 
     BluetoothGatt fittoServer;
-    List<BluetoothGattService> fittoServices;
-    List<BluetoothGattCharacteristic> fittoCharacterics;
 
     private static final String FITTO_MAC_ADDRESS = "EE:F0:EA:17:69:B4";
 
-    private String deviceManufacturer;
-    private String deviceModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -154,38 +155,51 @@ public class MainActivity extends AppCompatActivity {
 
                                 // After the server is connected,
                                 Log.w(TAG, "Discovering services...");
-                                fittoServer.discoverServices(); //TODO: DONT DELETE THIS!!!!
-
+                                fittoServer.discoverServices();//TODO: DONT DELETE THIS!!!!
                                 try {
                                     Thread.sleep(5000);
                                 } catch (InterruptedException e) {
                                     Log.w(TAG, e);
+                                } // Wait for services to be discovered.
+
+
+                                BluetoothGattService nordicUartService = fittoServer.getService(UUID.fromString(Nordic_UART_Service));
+
+                                BluetoothGattCharacteristic rxCharacteristic = nordicUartService.getCharacteristic(UUID.fromString(RX_Characteristic));
+                                BluetoothGattCharacteristic txCharacteristic = nordicUartService.getCharacteristic(UUID.fromString(TX_Characteristic));
+                                fittoServer.setCharacteristicNotification(txCharacteristic, true);
+
+                                Log.w(TAG, "Enabling Characteristics notifications on TxCharacteristic..");
+                                try {
+                                    Thread.sleep(3);
+                                } catch (InterruptedException e) {
+                                    Log.w(TAG, e);
                                 }
 
-                                fittoServices = fittoServer.getServices();
 
-                                for(BluetoothGattService service : fittoServices){
-                                    Log.w(TAG, service.getUuid().toString());
-                                    if (service.getUuid().toString().equals("0000180a-0000-1000-8000-00805f9b34fb")){
-                                        Log.w(TAG, "UUID 180a Found, getting characteristics.. ");
-                                        fittoCharacterics = service.getCharacteristics();
-                                        try {
-                                            Thread.sleep(10000);
-                                        } catch (InterruptedException e) {
-                                            Log.w(TAG, e);
-                                        } // Wait 5 sec
+                                Log.w(TAG, "Subscribing to Tx Characteristic notifications");
+                                BluetoothGattDescriptor descriptor = txCharacteristic.getDescriptor(UUID.fromString(TX_Descriptor));
 
-                                        for (BluetoothGattCharacteristic characteristic : fittoCharacterics){
-                                        fittoServer.readCharacteristic(characteristic);
-                                            try {
-                                                Thread.sleep(3000);
-                                            } catch (InterruptedException e) {
-                                                Log.w(TAG, e);
-                                            } // Wait 3 sec
-                                        }
+                                descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE); // Set the descriptor to receive notifications
+                                fittoServer.writeDescriptor(descriptor);
 
-                                    }
+                                try {
+                                    Thread.sleep(3);
+                                } catch (InterruptedException e) {
+                                    Log.w(TAG, e);
                                 }
+
+
+                                try {
+                                    Thread.sleep(9000);
+                                } catch (InterruptedException e) {
+                                    Log.w(TAG, e);
+                                } // Wait for client to subscribe for notifications
+
+                                Log.w(TAG, "Finished subscribing");
+                                rxCharacteristic.setValue(new byte[]{0x10, 0x00}); // add the value to the write command
+                                fittoServer.writeCharacteristic(rxCharacteristic); // Execute write command!
+
                             }
                         }
                     });
@@ -193,9 +207,6 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             };
-
-
-
 
     // Fitto Server callback
     BluetoothGattCallback serverCallback = new BluetoothGattCallback() {
@@ -244,30 +255,19 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
-
-            deviceManufacturer = new String(characteristic.getValue());
-            Log.w(TAG,deviceManufacturer);
-
-            if (characteristic.getUuid().toString().equals("")){
-                deviceManufacturer = new String(characteristic.getValue());
-                Log.w(TAG,deviceManufacturer);
-            }
-
-            if (characteristic.getUuid().toString().equals("")){
-                deviceModel = new String(characteristic.getValue());
-            }
-
-
+            Log.w("onCharacteristicRead"," callback!");
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicWrite(gatt, characteristic, status);
+            Log.w(TAG, "onCharacteristicWrite callback executed");
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
+            Log.w("onCharacteristicChanged", "onCharacteristicChanged");
         }
 
         @Override
@@ -278,6 +278,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorWrite(gatt, descriptor, status);
+            Log.w("onDescriptorWrite", "onDescriptorWrite");
         }
 
         @Override
