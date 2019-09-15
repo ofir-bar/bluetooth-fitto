@@ -202,8 +202,41 @@ public class MainActivity extends AppCompatActivity {
                                 } // Wait for client to subscribe for notifications
 
                                 Log.w(TAG, "Finished subscribing");
-                                rxCharacteristic.setValue(new byte[]{0x10, 0x00}); // add the value to the write command
-                                fittoServer.writeCharacteristic(rxCharacteristic); // Execute write command!
+                                Log.w(TAG, "Writing to change the BLE color");
+                                // Write another command
+//
+//                                rxCharacteristic.setValue(new byte[]{0x22, 0x01}); // add the value to the write command
+//                                fittoServer.writeCharacteristic(rxCharacteristic); // Execute write command!
+
+                                //
+
+
+
+
+                                try {
+                                    Thread.sleep(5000);
+                                } catch (InterruptedException e) {
+                                    Log.w(TAG, e);
+
+                                }
+
+
+
+//                                This command should make the Bottle with colors.
+//
+//                                byte[] command = new byte[]{
+//                                       0x23, // 0x23 request code
+//                                       0x05, // 0x05 id (8 bits)
+//                                       0x00, 0x00, 0x00, 0x00, // delay time in seconds: {0x00, 0x00, 0x00, 0x00}
+//                                       0x05, 0x00, // (Turn on for 1280 ms)
+//                                       0x05, 0x00, // (Turned off for 1280 ms)
+//                                       0x00, 0x05, // time to repeat {0x00, 0x05}
+//                                       0x06, // Color: 0x06 (Pink)
+//                                       0x00, // 0x00 signal end of packet send
+//                                };
+
+//                                rxCharacteristic.setValue(command); // add the value to the write command
+//                                fittoServer.writeCharacteristic(rxCharacteristic); // Execute write command!
 
                             }
                         }
@@ -277,8 +310,9 @@ public class MainActivity extends AppCompatActivity {
                 String firmwareVersionValue = deviceStatusModel.getVersionStr();
                 Log.w("Found firmware version:", firmwareVersionValue);
             }
-            else {
+            else if (resultCode.equals("23")){
                 Log.w("Result code value:", resultCode);
+                Log.w("resultAsHex", resultAsHex);
             }
 
 

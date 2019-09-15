@@ -68,4 +68,13 @@ public class DeviceStatusModel {
     // Use this String example for reference
     // String value = "10 15 00 09 00 00 01 05 00 00 01 01 00 af 00 31 2e 30 2e 31 37 35 00";
 
+
+    // Request value:
+    // 25 (request code)
+    // 00 (seq_id_t)
+    // 00 00 00 00 (time_s32_t)
+    // 06 40(time_ms16_t)
+    // 00 00
+    // 00 0A
+    // 07
 }
