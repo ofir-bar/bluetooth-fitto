@@ -17,6 +17,7 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -27,15 +28,23 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import org.altbeacon.beacon.BeaconConsumer;
+import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.BeaconParser;
+import org.altbeacon.beacon.MonitorNotifier;
+import org.altbeacon.beacon.Region;
+
 import java.util.UUID;
 
 import static tools.ofirbar.bluetoothscan.Constants.FITTO_MAC_ADDRESS;
+import static tools.ofirbar.bluetoothscan.Constants.IBEACON_PARSER_LAYOUT;
 import static tools.ofirbar.bluetoothscan.Constants.Nordic_UART_Service;
 import static tools.ofirbar.bluetoothscan.Constants.RX_Characteristic;
 import static tools.ofirbar.bluetoothscan.Constants.TX_Characteristic;
 import static tools.ofirbar.bluetoothscan.Constants.TX_Descriptor;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements BeaconConsumer {
 
     private static final int REQUEST_ENABLE_BT = 1;
     public static final int LOCATION_PERMISSION = 99;
@@ -43,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothAdapter bluetoothAdapter;
     private boolean mScanning;
     private Handler mHandler;
+    BeaconManager beaconManager;
+
 
     // Stops scanning after 15 seconds.
     private static final long SCAN_PERIOD = 5000;
@@ -67,6 +78,11 @@ public class MainActivity extends AppCompatActivity {
 
         isBluetoothSupportAndAvailable();
         isLocationPermitted();
+
+        beaconManager = BeaconManager.getInstanceForApplication(this);
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout(IBEACON_PARSER_LAYOUT));
+        beaconManager.bind(this);
+
 
         deviceFirmwareVersion = findViewById(R.id.device_firmware_version);
 
@@ -107,6 +123,12 @@ public class MainActivity extends AppCompatActivity {
         // Stop scanning if the Activity is paused
         mScanning = false;
         scanForBluetoothDevices(false);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        beaconManager.unbind(this);
     }
 
     // Scan for LE Bluetooth devices
@@ -439,5 +461,31 @@ public class MainActivity extends AppCompatActivity {
             }
 
         }
+    }
+
+
+    @Override
+    public void onBeaconServiceConnect() {
+        beaconManager.removeAllMonitorNotifiers();
+        beaconManager.addMonitorNotifier(new MonitorNotifier() {
+            @Override
+            public void didEnterRegion(Region region) {
+                Log.e(TAG, "I just saw an beacon for the first time!");
+            }
+
+            @Override
+            public void didExitRegion(Region region) {
+                Log.e(TAG, "I no longer see an beacon");
+            }
+
+            @Override
+            public void didDetermineStateForRegion(int state, Region region) {
+                Log.e(TAG, "I have just switched from seeing/not seeing beacons: "+state);
+            }
+        });
+
+        try {
+            beaconManager.startMonitoringBeaconsInRegion(new Region("myMonitoringUniqueId", null, null, null));
+        } catch (RemoteException ignore) {    }
     }
 }
